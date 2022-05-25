@@ -8,7 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from sqlalchemy import create_engine, Integer, Column, Date, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-CREDENTIALS_FILE = 'creds.json'
+CREDENTIALS_FILE = '../creds.json'
 SPREADSHEET_ID = "1_1zak7utADCdIv3df9bbTFfEtPkTn9GY6cKNhJF9iJE"
 
 Base = declarative_base()
