@@ -51,4 +51,4 @@ creds.json
 docs/_build/
 
 .idea
-/listener_messages/.idea/
+/bot/.idea/

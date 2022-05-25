@@ -1,10 +1,32 @@
 import datetime
-from watcher.watcher import load_google_sheets_to_list
+import os
 
+import apiclient
+import httplib2
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from oauth2client.service_account import ServiceAccountCredentials
 from notifiers import get_notifier
 
-TOKEN = 'TOKEN'
-CHAT_ID = 'CHAT_ID'
+TOKEN = os.environ.get('TOKEN')
+CHAT_ID = os.environ.get('CHAT_ID')
+
+CREDENTIALS_FILE = 'creds.json'
+SPREADSHEET_ID = "1_1zak7utADCdIv3df9bbTFfEtPkTn9GY6cKNhJF9iJE"
+
+
+def load_google_sheets_to_list():
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE,
+                                                                   ['https://www.googleapis.com/auth/spreadsheets',
+                                                                    'https://www.googleapis.com/auth/drive'])
+    httpAuth = credentials.authorize(httplib2.Http())
+    service = apiclient.discovery.build('sheets', 'v4', http=httpAuth)
+    values = service.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range='A:D',
+        majorDimension='ROWS'
+    ).execute()
+    return [dict(zip(['id', 'number_order', 'price', 'date_delivery'], l)) for l in values.get('values')[1:]]
 
 
 def bot():

@@ -1,0 +1,54 @@
+---
+version: "3.9"
+services:
+  db:
+    image: postgres
+    ports: 
+      - 5432:5432
+    volumes:
+      - ./data/db:/var/lib/postgresql/mydata
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  web:
+    build: ./django_web
+    command: >
+            bash -c "sleep 10 &&
+            python manage.py makemigrations && 
+            python manage.py migrate &&
+            echo \"from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'pass')\" | python manage.py shell &&
+            python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      db:
+        condition: service_started
+  watcher:
+    build: ./watcher
+    command: >
+            bash -c "sleep 20 && python watcher.py"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      web: 
+        condition: service_started
+  bot:
+    build: ./bot
+    command: >
+            bash -c "sleep 10 && python bot.py"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - CHAT_ID=YOUT_CHAT_ID
+      - TOKEN=5315402312:AAGLzg3sNyIW5dbjjac9w0_gsWc1kT0Wepw
+    depends_on:
+      web: 
+        condition: service_started

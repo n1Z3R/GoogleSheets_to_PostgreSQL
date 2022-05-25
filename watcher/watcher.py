@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import datetime
 import httplib2
@@ -8,17 +9,18 @@ from oauth2client.service_account import ServiceAccountCredentials
 from sqlalchemy import create_engine, Integer, Column, Date, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-CREDENTIALS_FILE = '../creds.json'
+CREDENTIALS_FILE = 'creds.json'
 SPREADSHEET_ID = "1_1zak7utADCdIv3df9bbTFfEtPkTn9GY6cKNhJF9iJE"
 
 Base = declarative_base()
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/test')
+engine = create_engine(
+    f'postgresql://{os.environ.get("POSTGRES_USER")}:{os.environ.get("POSTGRES_PASSWORD")}@db:5432/{os.environ.get("POSTGRES_NAME")}')
 session = sessionmaker(bind=engine)
 s = session()
 
 
 class GoogleSheetsTable(Base):
-    __tablename__ = 'test_table'
+    __tablename__ = 'web_app_googlesheetsmodel'
     id = Column(Integer, primary_key=True)
     number_order = Column("заказ №", Integer)
     price = Column("стоимость,$", Integer)
@@ -71,8 +73,8 @@ def main():
                         row = s.query(GoogleSheetsTable).filter_by(id=i.get('id')).one()
                         row.number_order = j.get("number_order")
                         row.price = j.get("price")
-                        row.date_delivery = j.get("date_delivery")
-                        row.price_rub = get_dollar_exchange(int(i.get("price")))
+                        row.date_delivery = datetime.strptime(j.get("date_delivery"), '%d.%m.%Y').strftime(
+                            '%Y-%m-%d')
                         s.add(row)
                         s.commit()
                         del database_dict_diff[index]
@@ -88,7 +90,9 @@ def main():
                     if len(i) == 4:
                         new = GoogleSheetsTable(id=i.get("id"), number_order=i.get("number_order"),
                                                 price=i.get("price"),
-                                                date_delivery=i.get("date_delivery"),
+                                                date_delivery=datetime.strptime(i.get("date_delivery"),
+                                                                                         '%d.%m.%Y').strftime(
+                                                    '%Y-%m-%d'),
                                                 price_rub=get_dollar_exchange(int(i.get("price"))))
                         s.add(new)
                         s.commit()
