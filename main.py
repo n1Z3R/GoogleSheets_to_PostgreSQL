@@ -2,8 +2,10 @@ import time
 from datetime import datetime
 import httplib2
 import apiclient
+from bs4 import BeautifulSoup as bs
+import requests
 from oauth2client.service_account import ServiceAccountCredentials
-from sqlalchemy import create_engine, Integer, Column, Date
+from sqlalchemy import create_engine, Integer, Column, Date, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 CREDENTIALS_FILE = 'creds.json'
@@ -21,6 +23,7 @@ class GoogleSheetsTable(Base):
     number_order = Column("заказ №", Integer)
     price = Column("стоимость,$", Integer)
     date_delivery = Column("срок поставки", Date)
+    price_rub = Column("стоимость в руб.", Float)
 
 
 def load_google_sheets_to_list():
@@ -35,6 +38,13 @@ def load_google_sheets_to_list():
         majorDimension='ROWS'
     ).execute()
     return [dict(zip(['id', 'number_order', 'price', 'date_delivery'], l)) for l in values.get('values')[1:]]
+
+
+def get_dollar_exchange(price_usd: int):
+    r = requests.get("https://www.cbr.ru/scripts/XML_daily.asp?")
+    soup = bs(r.content, 'xml')
+    price = soup.find(ID="R01235").find("Value").text
+    return round((float(price.replace(",", ".")) * price_usd), 2)
 
 
 def load_from_database():
@@ -62,6 +72,7 @@ def main():
                         row.number_order = j.get("number_order")
                         row.price = j.get("price")
                         row.date_delivery = j.get("date_delivery")
+                        row.price_rub = get_dollar_exchange(int(i.get("price")))
                         s.add(row)
                         s.commit()
                         del database_dict_diff[index]
@@ -77,7 +88,8 @@ def main():
                     if len(i) == 4:
                         new = GoogleSheetsTable(id=i.get("id"), number_order=i.get("number_order"),
                                                 price=i.get("price"),
-                                                date_delivery=i.get("date_delivery"))
+                                                date_delivery=i.get("date_delivery"),
+                                                price_rub=get_dollar_exchange(int(i.get("price"))))
                         s.add(new)
                         s.commit()
                         print("ADDED:", i)
